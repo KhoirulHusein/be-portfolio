@@ -1,22 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# Portfolio Backend API
 
-## Getting Started
+A robust authentication API built with Next.js App Router, designed specifically for portfolio projects.
 
-First, run the development server:
+## Features
+
+- 🔐 Complete authentication system (register, login, logout, refresh tokens)
+- 🔑 JWT-based authentication with access and refresh tokens
+- 🛡️ Password hashing with bcrypt
+- 🚦 Rate limiting for security
+- 🌐 CORS support for frontend integration
+- 📁 Modular and scalable architecture
+- 🗃️ PostgreSQL with Prisma ORM
+- 📝 TypeScript for type safety
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Install dependencies
+pnpm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your database URL and JWT secrets
+
+# Set up database
+npx prisma migrate dev --name init
+npx prisma generate
+
+# Start development server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The API will be available at `http://localhost:4000`
 
-You can start editing the page by modifying `app/route.ts`. The page auto-updates as you edit the file.
+## API Documentation
+
+See the complete API documentation: [`src/app/docs/README-AUTH.md`](./src/app/docs/README-AUTH.md)
+
+## Testing
+
+Run the API test suite:
+
+```bash
+# Run all endpoint tests
+./src/app/test/test-api.sh
+```
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/v1/           # API endpoints
+│   ├── docs/             # Documentation
+│   └── test/             # Testing scripts
+├── lib/                  # Core libraries
+│   ├── auth/            # Authentication utilities
+│   └── utils/           # Helper functions
+└── middleware/          # Request middleware
+```
 
 ## Learn More
 
