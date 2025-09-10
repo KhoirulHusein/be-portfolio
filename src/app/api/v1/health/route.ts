@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyCORS, setCORSHeaders } from '../../../../lib/auth/cors'
-import { handleError, ok, methodNotAllowed } from '../../../../lib/utils/response'
+
+import { applyCORS, setCORSHeaders } from '@/lib/auth'
+import { handleError, ok, methodNotAllowed } from '@/lib/utils'
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {

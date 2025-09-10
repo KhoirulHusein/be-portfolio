@@ -1,4 +1,4 @@
-import { ValidationError } from '../../auth/errors'
+import { ValidationError } from '@/lib/auth'
 
 export interface RegisterRequest {
   email: string

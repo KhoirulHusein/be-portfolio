@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyCORS, setCORSHeaders } from '../../../../../lib/auth/cors'
-import { handleError, ok, methodNotAllowed } from '../../../../../lib/utils/response'
-import { validateRefresh } from '../../../../../lib/utils/validators/auth'
-import { signAccessToken, generateRefreshToken, getRefreshTokenExpiry } from '../../../../../lib/auth/jwt'
-import { prisma } from '../../../../../lib/prisma'
-import { UnauthorizedError, TokenRevokedError } from '../../../../../lib/auth/errors'
-import { getClientIP } from '../../../../../middleware/auth-middleware'
-import { checkRefreshRateLimit } from '../../../../../lib/auth/rate-limit'
+
+import { prisma } from '@/lib/prisma'
+import {
+  applyCORS,
+  setCORSHeaders,
+  signAccessToken,
+  generateRefreshToken,
+  getRefreshTokenExpiry,
+  UnauthorizedError,
+  TokenRevokedError,
+  checkRefreshRateLimit,
+} from '@/lib/auth'
+import { handleError, ok, methodNotAllowed } from '@/lib/utils'
+import { validateRefresh } from '@/lib/validators'
+import { getClientIP } from '@/middleware/auth-middleware'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {

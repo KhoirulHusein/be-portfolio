@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyCORS, setCORSHeaders } from '../../../../../lib/auth/cors'
-import { handleError, ok, methodNotAllowed } from '../../../../../lib/utils/response'
-import { validateRefresh } from '../../../../../lib/utils/validators/auth'
-import { prisma } from '../../../../../lib/prisma'
+
+import { prisma } from '@/lib/prisma'
+import { applyCORS, setCORSHeaders } from '@/lib/auth'
+import { handleError, ok, methodNotAllowed } from '@/lib/utils'
+import { validateRefresh } from '@/lib/validators'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -18,15 +21,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       where: { token: refreshToken }
     })
 
-    if (tokenRecord && !tokenRecord.revoked) {
-      await prisma.refreshToken.update({
-        where: { id: tokenRecord.id },
-        data: { revoked: true }
-      })
+    // Return 401 if token doesn't exist or is already revoked
+    if (!tokenRecord || tokenRecord.revoked) {
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid or revoked refresh token'
+          }
+        },
+        { status: 401 }
+      )
+      return setCORSHeaders(response, req.headers.get('origin'))
     }
 
-    // Always return success for logout (idempotent)
-    const response = ok({ success: true })
+    // Revoke the token
+    await prisma.refreshToken.update({
+      where: { id: tokenRecord.id },
+      data: { revoked: true }
+    })
+
+    // Return success
+    const response = ok({ message: 'Logged out successfully' })
     return setCORSHeaders(response, req.headers.get('origin'))
   } catch (error) {
     const errorResponse = handleError(error)

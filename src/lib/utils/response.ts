@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { AuthError } from '../auth/errors'
+
+import { AuthError } from '@/lib/auth'
 
 export interface APIResponse<T = any> {
   success: boolean
@@ -8,6 +9,16 @@ export interface APIResponse<T = any> {
     code: string
     message: string
   }
+}
+
+export interface APIErrorResponse {
+  success: boolean
+  errors: string[]
+}
+
+export interface APISuccessResponse<T = any> {
+  success: boolean
+  data: T
 }
 
 export function ok<T>(data: T, status = 200): NextResponse {
@@ -23,10 +34,7 @@ export function created<T>(data: T): NextResponse {
 }
 
 export function noContent(): NextResponse {
-  const response: APIResponse = {
-    success: true
-  }
-  return NextResponse.json(response, { status: 204 })
+  return new NextResponse(null, { status: 204 })
 }
 
 export function error(
@@ -40,6 +48,28 @@ export function error(
       code,
       message
     }
+  }
+  return NextResponse.json(response, { status })
+}
+
+/**
+ * Generate success response with consistent format
+ */
+export function generateSuccessResponse<T>(data: T, status = 200): NextResponse {
+  const response: APISuccessResponse<T> = {
+    success: true,
+    data
+  }
+  return NextResponse.json(response, { status })
+}
+
+/**
+ * Generate error response with consistent format
+ */
+export function generateErrorResponse(errors: string[], status = 400): NextResponse {
+  const response: APIErrorResponse = {
+    success: false,
+    errors
   }
   return NextResponse.json(response, { status })
 }

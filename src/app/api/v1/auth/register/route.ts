@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyCORS, setCORSHeaders } from '../../../../../lib/auth/cors'
-import { handleError, created, methodNotAllowed } from '../../../../../lib/utils/response'
-import { validateRegister } from '../../../../../lib/utils/validators/auth'
-import { hashPassword } from '../../../../../lib/auth/password'
-import { prisma } from '../../../../../lib/prisma'
-import { UserExistsError } from '../../../../../lib/auth/errors'
-import { getClientIP } from '../../../../../middleware/auth-middleware'
+
+import { prisma } from '@/lib/prisma'
+import {
+  applyCORS,
+  setCORSHeaders,
+  hashPassword,
+  UserExistsError,
+  assignRole,
+} from '@/lib/auth'
+import { handleError, created, methodNotAllowed } from '@/lib/utils'
+import { validateRegister } from '@/lib/validators'
+import { getClientIP } from '@/middleware/auth-middleware'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -16,37 +23,60 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const body = await req.json()
     const { email, username, password } = validateRegister(body)
 
-    // Check if user already exists
+    // Check if user already exists (email or username)
     const existingUser = await prisma.user.findFirst({
       where: {
-        email
+        OR: [
+          { email },
+          { username }
+        ]
       }
     })
 
     if (existingUser) {
-      throw new UserExistsError('email')
+      if (existingUser.email === email) {
+        throw new UserExistsError('email')
+      } else {
+        throw new UserExistsError('username')
+      }
     }
 
     // Hash password
     const passwordHash = await hashPassword(password)
 
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        username,
-        passwordHash
-      },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        createdAt: true
-      }
-    })
+    // Create user (with try-catch for race conditions)
+    try {
+      const user = await prisma.user.create({
+        data: {
+          email,
+          username,
+          passwordHash
+        },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          createdAt: true
+        }
+      })
 
-    const response = created(user)
-    return setCORSHeaders(response, req.headers.get('origin'))
+      // Auto-assign USER role to new user
+      await assignRole(user.id, 'USER')
+
+      const response = created(user)
+      return setCORSHeaders(response, req.headers.get('origin'))
+    } catch (error: any) {
+      // Handle Prisma unique constraint violations (race conditions)
+      if (error.code === 'P2002') {
+        const target = error.meta?.target
+        if (target?.includes('email')) {
+          throw new UserExistsError('email')
+        } else if (target?.includes('username')) {
+          throw new UserExistsError('username')
+        }
+      }
+      throw error // Re-throw other errors
+    }
   } catch (error) {
     const errorResponse = handleError(error)
     return setCORSHeaders(errorResponse, req.headers.get('origin'))

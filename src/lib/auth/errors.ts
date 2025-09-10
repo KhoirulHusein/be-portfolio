@@ -69,3 +69,27 @@ export class UserExistsError extends ConflictError {
     super(`User with this ${field} already exists`, 'USER_EXISTS')
   }
 }
+
+export class PermissionDeniedError extends ForbiddenError {
+  constructor(permission?: string) {
+    const message = permission 
+      ? `Permission denied. Required: ${permission}` 
+      : 'Permission denied'
+    super(message, 'PERMISSION_DENIED')
+  }
+}
+
+export class RoleRequiredError extends ForbiddenError {
+  constructor(role?: string) {
+    const message = role 
+      ? `Role required. Required: ${role}` 
+      : 'Required role not assigned'
+    super(message, 'ROLE_REQUIRED')
+  }
+}
+
+export class NotFoundError extends AuthError {
+  constructor(resource: string = 'Resource') {
+    super(`${resource} not found`, 'NOT_FOUND', 404)
+  }
+}

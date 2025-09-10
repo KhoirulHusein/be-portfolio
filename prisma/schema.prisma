@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,33 +5,106 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // disarankan: gunakan shadow untuk migrate dev (DB berbeda)
+  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  username     String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String         @id @default(cuid())
+  email          String         @unique
+  username       String         @unique
+  passwordHash   String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
-  refreshTokens RefreshToken[]
+  refreshTokens  RefreshToken[]
+  roles          UserRole[]
 
   @@index([email])
   @@index([username])
 }
 
 model RefreshToken {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  revoked   Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  revoked    Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Restrict)
 
   @@index([userId])
   @@index([expiresAt])
   @@index([token])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@index([name])
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique // e.g. "user:read"
+  description String?
+  roles       RolePermission[]
+
+  @@index([key])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  assignedAt DateTime @default(now())
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model About {
+  id           String    @id @default(cuid())
+  headline     String    // misal: "Backend Engineer"
+  subheadline  String?   // misal: "Enjoys building APIs & tooling"
+  bio          String    // markdown / long text
+  avatarUrl    String?   // URL gambar
+  location     String?
+  emailPublic  String?
+  phonePublic  String?
+  links        Json?     // { github, linkedin, twitter, website, ... }
+  skills       String[]  // Postgres text[]
+  published    Boolean   @default(false)
+
+  createdBy    String?
+  updatedBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([published])
+  @@index([updatedAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

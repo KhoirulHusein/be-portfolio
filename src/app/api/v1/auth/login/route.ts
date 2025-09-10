@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyCORS, setCORSHeaders } from '../../../../../lib/auth/cors'
-import { handleError, ok, methodNotAllowed } from '../../../../../lib/utils/response'
-import { validateLogin } from '../../../../../lib/utils/validators/auth'
-import { comparePassword } from '../../../../../lib/auth/password'
-import { signAccessToken, generateRefreshToken, getRefreshTokenExpiry } from '../../../../../lib/auth/jwt'
-import { prisma } from '../../../../../lib/prisma'
-import { InvalidCredentialsError } from '../../../../../lib/auth/errors'
-import { getClientIP } from '../../../../../middleware/auth-middleware'
-import { checkLoginRateLimit } from '../../../../../lib/auth/rate-limit'
+
+import { prisma } from '@/lib/prisma'
+import {
+  applyCORS,
+  setCORSHeaders,
+  comparePassword,
+  signAccessToken,
+  generateRefreshToken,
+  getRefreshTokenExpiry,
+  InvalidCredentialsError,
+  checkLoginRateLimit,
+} from '@/lib/auth'
+import { handleError, ok, methodNotAllowed } from '@/lib/utils'
+import { validateLogin } from '@/lib/validators'
+import { getClientIP } from '@/middleware/auth-middleware'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {

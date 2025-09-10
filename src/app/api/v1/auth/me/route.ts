@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyCORS, setCORSHeaders } from '../../../../../lib/auth/cors'
-import { handleError, ok, methodNotAllowed } from '../../../../../lib/utils/response'
-import { extractUserFromToken } from '../../../../../middleware/auth-middleware'
+
+import { applyCORS, setCORSHeaders, getUserWithRoles } from '@/lib/auth'
+import { handleError, ok, methodNotAllowed } from '@/lib/utils'
+import { extractUserFromToken } from '@/middleware/auth-middleware'
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
@@ -11,10 +12,30 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const payload = await extractUserFromToken(req)
     
+    // Get user with roles from database (real-time data)
+    const user = await getUserWithRoles(payload.sub)
+    
+    if (!user) {
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'User not found'
+          }
+        },
+        { status: 404 }
+      )
+      return setCORSHeaders(response, req.headers.get('origin'))
+    }
+
     const userData = {
-      id: payload.sub,
-      email: payload.email,
-      username: payload.username
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      roles: user.roles,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
     }
 
     const response = ok(userData)

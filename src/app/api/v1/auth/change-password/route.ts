@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyCORS, setCORSHeaders } from '../../../../../lib/auth/cors'
-import { handleError, ok, methodNotAllowed } from '../../../../../lib/utils/response'
-import { validateChangePassword } from '../../../../../lib/utils/validators/auth'
-import { extractUserFromToken } from '../../../../../middleware/auth-middleware'
-import { comparePassword, hashPassword } from '../../../../../lib/auth/password'
-import { prisma } from '../../../../../lib/prisma'
-import { InvalidCredentialsError } from '../../../../../lib/auth/errors'
+
+import { prisma } from '@/lib/prisma'
+import {
+  applyCORS,
+  setCORSHeaders,
+  comparePassword,
+  hashPassword,
+  InvalidCredentialsError,
+} from '@/lib/auth'
+import { handleError, ok, methodNotAllowed } from '@/lib/utils'
+import { validateChangePassword } from '@/lib/validators'
+import { extractUserFromToken } from '@/middleware/auth-middleware'
+
+export const runtime = 'nodejs'
 
 export async function PUT(req: NextRequest): Promise<NextResponse> {
   try {
@@ -47,7 +54,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       })
     ])
 
-    const response = ok({ success: true })
+    const response = ok({ message: 'Password changed successfully' })
     return setCORSHeaders(response, req.headers.get('origin'))
   } catch (error) {
     const errorResponse = handleError(error)
