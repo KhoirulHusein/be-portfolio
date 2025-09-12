@@ -16,6 +16,11 @@ async function main() {
     { key: 'about:write', description: 'Write/edit about information' },
     { key: 'about:publish', description: 'Publish/unpublish about information' },
     { key: 'about:delete', description: 'Delete about information' },
+    { key: 'experience:create', description: 'Create experience entries' },
+    { key: 'experience:read', description: 'Read experience information' },
+    { key: 'experience:update', description: 'Update experience entries' },
+    { key: 'experience:delete', description: 'Delete experience entries' },
+    { key: 'experience:publish', description: 'Publish/unpublish experience entries' },
   ]
 
   console.log('📝 Creating permissions...')

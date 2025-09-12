@@ -6,6 +6,26 @@ import bcrypt from 'bcrypt'
 
 const SUPERADMIN_KEY = 'SUPERADMIN_USER_ID'
 
+// Safety guard: prevent running in test environment
+if (process.env.NODE_ENV === 'test') {
+  console.error('❌ Cannot run bootstrap-superadmin in test environment!')
+  console.error('   This script modifies database and should not run during tests.')
+  process.exit(1)
+}
+
+// Display database URL (masked for security)
+const databaseUrl = process.env.DATABASE_URL
+if (databaseUrl) {
+  const maskedUrl = databaseUrl.replace(/:\/\/([^:]+):([^@]+)@/, '://***:***@')
+  console.log(`📊 Target database: ${maskedUrl}`)
+  
+  // Production safety check
+  if (process.env.NODE_ENV === 'production' && databaseUrl.includes('localhost')) {
+    console.warn('⚠️  WARNING: Running production environment with localhost database')
+    console.warn('   Make sure this is intentional!')
+  }
+}
+
 async function bootstrapSuperadmin() {
   try {
     // Check required environment variables

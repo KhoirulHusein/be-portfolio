@@ -3,10 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // disarankan: gunakan shadow untuk migrate dev (DB berbeda)
-  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
@@ -99,6 +98,31 @@ model About {
 
   @@index([published])
   @@index([updatedAt])
+}
+
+model Experience {
+  id             String    @id @default(cuid())
+  company        String
+  role           String
+  companyLogoUrl String?
+  startDate      DateTime
+  endDate        DateTime?  // null = current
+  location       String?
+  employmentType String?    // Full-time, Contract, dll
+  summary        String?
+  highlights     String[]   // bullets
+  techStack      String[]   // tags
+  order          Int       @default(0) // opsional untuk manual sorting
+  published      Boolean   @default(true) // default boleh tampil publik
+
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([startDate])
+  @@index([order])
+  @@index([published])
 }
 
 model Setting {

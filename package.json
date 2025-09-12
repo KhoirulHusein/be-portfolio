@@ -3,22 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 4000 --turbopack",
-    "build": "next build",
-    "start": "next start -p 4000",
-    "test": "vitest run",
-    "test:unit": "vitest run --dir src/app/test/unit",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:prepare": "prisma migrate deploy",
-    "test:reset": "prisma migrate reset --force --skip-generate --skip-seed",
-    "prisma:gen": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:reset": "prisma migrate reset --force",
-    "prisma:studio": "prisma studio",
-    "prisma:seed": "prisma db seed",
-    "rbac:sync": "tsx scripts/sync-admin-perms.ts",
-    "rbac:bootstrap": "tsx scripts/bootstrap-superadmin.ts"
+    "dev": "dotenv -e .env.development -- next dev -p 4000",
+    "build:dev": "dotenv -e .env.development -- next build",
+    "build:prod": "dotenv -e .env.production -- next build",
+    "start:dev": "dotenv -e .env.development -- next start -p 4000",
+    "start:prod": "dotenv -e .env.production -- next start -p 4000",
+    
+    "test": "dotenv -e .env.test -- vitest run",
+    "test:watch": "dotenv -e .env.test -- vitest",
+    "test:prepare": "dotenv -e .env.test -- prisma migrate deploy",
+    "test:reset": "dotenv -e .env.test -- prisma migrate reset --force --skip-generate --skip-seed",
+    
+    "prisma:generate": "dotenv -e .env.development -- prisma generate",
+    "prisma:migrate:dev": "dotenv -e .env.development -- prisma migrate dev",
+    "prisma:migrate:prod": "dotenv -e .env.production -- prisma migrate deploy",
+    "prisma:reset:dev": "dotenv -e .env.development -- prisma migrate reset --force",
+    "prisma:studio": "dotenv -e .env.development -- prisma studio",
+    "prisma:seed:dev": "dotenv -e .env.development -- prisma db seed",
+    
+    "rbac:bootstrap:dev": "dotenv -e .env.development -- tsx scripts/bootstrap-superadmin.ts",
+    "rbac:bootstrap:prod": "dotenv -e .env.production -- tsx scripts/bootstrap-superadmin.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -37,6 +41,7 @@
     "@types/react": "^19",
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^17.2.2",
+    "dotenv-cli": "^10.0.0",
     "prisma": "^6.15.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",

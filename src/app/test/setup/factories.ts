@@ -28,6 +28,22 @@ export interface CreateAboutData {
   createdBy?: string
 }
 
+export interface CreateExperienceData {
+  company: string
+  role: string
+  companyLogoUrl?: string
+  startDate: Date
+  endDate?: Date | null
+  location?: string
+  employmentType?: string
+  summary?: string
+  highlights?: string[]
+  techStack?: string[]
+  order?: number
+  published?: boolean
+  createdBy?: string
+}
+
 /**
  * Create a test user with default USER role
  */
@@ -112,6 +128,30 @@ export async function createAbout(data: CreateAboutData) {
 }
 
 /**
+ * Create an experience entry for testing
+ */
+export async function createExperience(data: CreateExperienceData) {
+  return await prisma.experience.create({
+    data: {
+      company: data.company,
+      role: data.role,
+      companyLogoUrl: data.companyLogoUrl,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      location: data.location,
+      employmentType: data.employmentType,
+      summary: data.summary,
+      highlights: data.highlights || [],
+      techStack: data.techStack || [],
+      order: data.order ?? 0,
+      published: data.published ?? true,
+      createdBy: data.createdBy,
+      updatedBy: data.createdBy,
+    },
+  })
+}
+
+/**
  * Clean up test data
  */
 export async function cleanupTestData(): Promise<void> {
@@ -120,6 +160,7 @@ export async function cleanupTestData(): Promise<void> {
   await prisma.refreshToken.deleteMany()
   await prisma.userRole.deleteMany()
   await prisma.about.deleteMany()
+  await prisma.experience.deleteMany()
   await prisma.user.deleteMany()
   // Don't delete rolePermission, permission, or role as they're needed for all tests
 }
