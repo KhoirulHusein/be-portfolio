@@ -26,7 +26,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         },
         { status: 404 }
       )
-      return setCORSHeaders(response, req.headers.get('origin'))
+      return setCORSHeaders(response, req.headers.get('origin'), true)
     }
 
     const userData = {
@@ -39,10 +39,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
 
     const response = ok(userData)
-    return setCORSHeaders(response, req.headers.get('origin'))
+    return setCORSHeaders(response, req.headers.get('origin'), true)
   } catch (error) {
     const errorResponse = handleError(error)
-    return setCORSHeaders(errorResponse, req.headers.get('origin'))
+    return setCORSHeaders(errorResponse, req.headers.get('origin'), true)
   }
 }
 

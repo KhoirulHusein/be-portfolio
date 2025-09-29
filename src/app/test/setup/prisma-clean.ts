@@ -7,6 +7,9 @@ beforeEach(async () => {
     await prisma.$transaction(async (tx) => {
       // Order matters due to FKs
       await tx.refreshToken.deleteMany({})
+      await tx.project.deleteMany({})
+      await tx.experience.deleteMany({})
+      await tx.about.deleteMany({})
       await tx.user.deleteMany({})
     })
   } catch (error) {
@@ -14,6 +17,9 @@ beforeEach(async () => {
     // Try manual cleanup if transaction fails
     try {
       await prisma.refreshToken.deleteMany({})
+      await prisma.project.deleteMany({})
+      await prisma.experience.deleteMany({})
+      await prisma.about.deleteMany({})
       await prisma.user.deleteMany({})
     } catch (cleanupError) {
       console.error('Manual cleanup also failed:', cleanupError)

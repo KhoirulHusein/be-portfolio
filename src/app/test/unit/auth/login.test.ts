@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { POST as registerHandler } from '@/app/api/v1/auth/register/route'
 import { POST as loginHandler } from '@/app/api/v1/auth/login/route'
 import { jsonRequest, readJson } from '@/app/test/setup/request-helpers'
+import { extractCookie, checkCookieAttributes } from '@/app/test/setup/cookie-helpers'
 import { prisma } from '@/lib/prisma'
 
 // Mock rate limiting
@@ -34,19 +35,28 @@ describe('POST /api/v1/auth/login', () => {
 
     expect(status).toBe(200)
     expect(json.success).toBe(true)
-    expect(json.data.accessToken).toBeDefined()
-    expect(json.data.refreshToken).toBeDefined()
+    
+    // Should NOT include tokens in response body anymore
+    expect(json.data.accessToken).toBeUndefined()
+    expect(json.data.refreshToken).toBeUndefined()
+    expect(json.data.message).toBe('Login successful')
     expect(json.data.user).toMatchObject({
       email: testUser.email,
       username: testUser.username
     })
 
-    // Verify token stored in database
-    const storedToken = await prisma.refreshToken.findUnique({
-      where: { token: json.data.refreshToken }
-    })
-    expect(storedToken).toBeTruthy()
-    expect(storedToken?.revoked).toBe(false)
+    // Should set session cookie with proper attributes
+    const sessionCookie = extractCookie(response, 'portfolio_session')
+    expect(sessionCookie).toBeDefined()
+    expect(sessionCookie).not.toBe('')
+
+    // Check cookie attributes for test environment
+    const setCookieHeader = response.headers.get('set-cookie') || ''
+    expect(setCookieHeader.toLowerCase()).toContain('httponly')
+    expect(setCookieHeader.toLowerCase()).toContain('path=/')
+    expect(setCookieHeader.toLowerCase()).toContain('samesite=lax')
+    // Should NOT have Secure flag in test environment
+    expect(setCookieHeader.toLowerCase()).not.toContain('secure')
   })
 
   it('should login with username successfully', async () => {
@@ -60,8 +70,11 @@ describe('POST /api/v1/auth/login', () => {
 
     expect(status).toBe(200)
     expect(json.success).toBe(true)
-    expect(json.data.accessToken).toBeDefined()
-    expect(json.data.refreshToken).toBeDefined()
+    
+    // Should set session cookie
+    const sessionCookie = extractCookie(response, 'portfolio_session')
+    expect(sessionCookie).toBeDefined()
+    expect(sessionCookie).not.toBe('')
   })
 
   it('should return 401 for invalid email/username', async () => {
@@ -119,5 +132,20 @@ describe('POST /api/v1/auth/login', () => {
     
     expect(response.status).toBe(200)
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:3000')
+    expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true')
+    expect(response.headers.get('Access-Control-Allow-Methods')).toContain('POST')
+    expect(response.headers.get('Access-Control-Allow-Headers')).toContain('Content-Type')
+  })
+
+  it('should set CORS headers on response', async () => {
+    const req = jsonRequest('http://localhost:4000/api/v1/auth/login', 'POST', {
+      emailOrUsername: testUser.email,
+      password: testUser.password
+    }, { 'Origin': 'http://localhost:3000' })
+
+    const response = await loginHandler(req as any)
+    
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:3000')
+    expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true')
   })
 })

@@ -14,6 +14,7 @@ import {
 import { handleError, ok, methodNotAllowed } from '@/lib/utils'
 import { validateLogin } from '@/lib/validators'
 import { getClientIP } from '@/middleware/auth-middleware'
+import { buildSessionCookie, getAppEnvironment } from '@/lib/utils/session-cookie'
 
 export const runtime = 'nodejs'
 
@@ -68,21 +69,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     })
 
+    // Set session cookie (HttpOnly)
+    const sessionCookie = buildSessionCookie(accessToken, getAppEnvironment())
+
+    // Response data (don't include tokens in body)
     const responseData = {
-      accessToken,
-      refreshToken,
       user: {
         id: user.id,
         email: user.email,
         username: user.username
-      }
+      },
+      message: 'Login successful'
     }
 
     const response = ok(responseData)
-    return setCORSHeaders(response, req.headers.get('origin'))
+    // Set the session cookie
+    response.cookies.set(sessionCookie)
+    return setCORSHeaders(response, req.headers.get('origin'), true)
   } catch (error) {
     const errorResponse = handleError(error)
-    return setCORSHeaders(errorResponse, req.headers.get('origin'))
+    return setCORSHeaders(errorResponse, req.headers.get('origin'), true)
   }
 }
 

@@ -125,6 +125,44 @@ model Experience {
   @@index([published])
 }
 
+model Project {
+  id             String        @id @default(cuid())
+  title          String        // nama project yang tampil di kartu/detail
+  slug           String        @unique // URL-friendly id untuk akses publik
+  summary        String?       // deskripsi singkat untuk kartu/list
+  description    String?       // konten markdown/deskripsi lengkap
+  coverImageUrl  String?       // URL gambar utama project
+  galleryUrls    String[]      // list URL gambar tambahan (opsional)
+  repoUrl        String?       // link repo utama (GitHub/GitLab)
+  liveUrl        String?       // link demo/live site jika ada
+  videoUrl       String?       // link demo video (YouTube/Vimeo)
+  links          Json?         // link lain (docs, blogpost, npm, app store)
+  techStack      String[]      // list technology utama (untuk filter)
+  tags           String[]      // tag tematik (untuk pencarian/cluster)
+  status         ProjectStatus // enum: ONGOING | COMPLETED | ARCHIVED
+  featured       Boolean       @default(false) // untuk spotlight di landing
+  order          Int?          // manual ordering (naik di list admin)
+  startDate      DateTime?     // kapan mulai
+  endDate        DateTime?     // kapan selesai (opsional)
+  published      Boolean       @default(false) // visibilitas publik
+
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([published])
+  @@index([featured])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+enum ProjectStatus {
+  ONGOING
+  COMPLETED
+  ARCHIVED
+}
+
 model Setting {
   key   String @id
   value String

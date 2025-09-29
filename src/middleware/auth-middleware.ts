@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken, UnauthorizedError } from '@/lib/auth'
+import { getSessionCookieName } from '@/lib/utils/session-cookie'
 
 import type { JWTPayload } from '@/lib/auth/jwt'
 
@@ -16,13 +17,43 @@ export interface AuthenticatedRequest extends NextRequest {
 }
 
 export async function extractUserFromToken(req: NextRequest): Promise<JWTPayload> {
-  const authHeader = req.headers.get('authorization')
+  let token: string | undefined
+
+  // Priority 1: Try session cookie first
+  const sessionCookieName = getSessionCookieName()
   
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new UnauthorizedError('Missing or invalid authorization header')
+  if (req.cookies) {
+    const sessionCookie = req.cookies.get(sessionCookieName)
+    if (sessionCookie?.value) {
+      token = sessionCookie.value
+    }
+  }
+  
+  if (!token) {
+    // Fallback: Try manual cookie parsing from header (for test environments)
+    const cookieHeader = req.headers.get('cookie')
+    if (cookieHeader) {
+      const cookieMatch = cookieHeader.match(new RegExp(`${sessionCookieName}=([^;]+)`))
+      if (cookieMatch) {
+        token = cookieMatch[1]
+      }
+    }
+  }
+  
+  if (!token) {
+    // Priority 2: Fallback to Bearer token
+    const authHeader = req.headers.get('authorization')
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedError('Missing or invalid authorization header')
+    }
+
+    token = authHeader.substring(7) // Remove 'Bearer ' prefix
   }
 
-  const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+  if (!token) {
+    throw new UnauthorizedError('Missing authentication token')
+  }
   
   try {
     const payload = verifyAccessToken(token)
@@ -50,19 +81,36 @@ export async function extractUserFromToken(req: NextRequest): Promise<JWTPayload
 }
 
 /**
+ * Extract token from standard Request object (for route handlers)
+ * Tries session cookie first, then Bearer token
+ */
+function extractTokenFromRequest(req: Request): string {
+  // Priority 1: Try session cookie first
+  const cookieHeader = req.headers.get('cookie')
+  if (cookieHeader) {
+    const sessionCookieName = getSessionCookieName()
+    const cookieMatch = cookieHeader.match(new RegExp(`${sessionCookieName}=([^;]+)`))
+    if (cookieMatch) {
+      return cookieMatch[1]
+    }
+  }
+
+  // Priority 2: Fallback to Bearer token
+  const authHeader = req.headers.get('authorization')
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7) // Remove 'Bearer ' prefix
+  }
+
+  throw new UnauthorizedError('Authorization required')
+}
+
+/**
  * Extract user from standard Request object (for route handlers)
  * Throws UnauthorizedError if token is invalid/missing
  */
 export async function getAuthUserOrThrow(req: Request): Promise<AuthUser> {
-  const authHeader = req.headers.get('authorization')
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new UnauthorizedError('Authorization required')
-  }
-
-  const token = authHeader.substring(7) // Remove 'Bearer ' prefix
-  
   try {
+    const token = extractTokenFromRequest(req)
     const payload = verifyAccessToken(token)
     
     // Verify user still exists

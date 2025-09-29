@@ -21,12 +21,21 @@ export interface APISuccessResponse<T = any> {
   data: T
 }
 
-export function ok<T>(data: T, status = 200): NextResponse {
+export function ok<T>(data: T, status = 200, headers?: Headers): NextResponse {
   const response: APIResponse<T> = {
     success: true,
     data
   }
-  return NextResponse.json(response, { status })
+  const res = NextResponse.json(response, { status })
+  
+  // Add custom headers if provided
+  if (headers) {
+    headers.forEach((value, key) => {
+      res.headers.set(key, value)
+    })
+  }
+  
+  return res
 }
 
 export function created<T>(data: T): NextResponse {
@@ -40,7 +49,8 @@ export function noContent(): NextResponse {
 export function error(
   message: string, 
   code: string, 
-  status = 500
+  status = 500,
+  headers?: Headers
 ): NextResponse {
   const response: APIResponse = {
     success: false,
@@ -49,7 +59,16 @@ export function error(
       message
     }
   }
-  return NextResponse.json(response, { status })
+  const res = NextResponse.json(response, { status })
+  
+  // Add custom headers if provided
+  if (headers) {
+    headers.forEach((value, key) => {
+      res.headers.set(key, value)
+    })
+  }
+  
+  return res
 }
 
 /**
@@ -74,18 +93,18 @@ export function generateErrorResponse(errors: string[], status = 400): NextRespo
   return NextResponse.json(response, { status })
 }
 
-export function handleError(err: unknown): NextResponse {
+export function handleError(err: unknown, headers?: Headers): NextResponse {
   console.error('API Error:', err)
   
   if (err instanceof AuthError) {
-    return error(err.message, err.code, err.statusCode)
+    return error(err.message, err.code, err.statusCode, headers)
   }
   
   if (err instanceof Error) {
-    return error(err.message, 'INTERNAL_ERROR', 500)
+    return error(err.message, 'INTERNAL_ERROR', 500, headers)
   }
   
-  return error('An unexpected error occurred', 'INTERNAL_ERROR', 500)
+  return error('An unexpected error occurred', 'INTERNAL_ERROR', 500, headers)
 }
 
 export function methodNotAllowed(): NextResponse {

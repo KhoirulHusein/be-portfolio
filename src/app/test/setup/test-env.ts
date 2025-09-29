@@ -41,7 +41,9 @@ beforeAll(async () => {
       // Create basic permissions
       const permissions = [
         'about:read', 'about:write', 'about:delete', 'about:publish',
-        'user:read', 'user:write', 'user:delete', 'portfolio:read', 'portfolio:write'
+        'user:read', 'user:write', 'user:delete', 'portfolio:read', 'portfolio:write',
+        'experience:read', 'experience:write', 'experience:delete', 'experience:publish',
+        'project:read', 'project:write', 'project:delete', 'project:publish'
       ]
       
       for (const key of permissions) {

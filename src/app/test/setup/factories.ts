@@ -44,16 +44,43 @@ export interface CreateExperienceData {
   createdBy?: string
 }
 
+export interface CreateProjectData {
+  title: string
+  slug?: string
+  summary?: string
+  description?: string
+  coverImageUrl?: string
+  galleryUrls?: string[]
+  repoUrl?: string
+  liveUrl?: string
+  videoUrl?: string
+  links?: Record<string, any>
+  techStack?: string[]
+  tags?: string[]
+  status?: 'ONGOING' | 'COMPLETED' | 'ARCHIVED'
+  featured?: boolean
+  order?: number
+  startDate?: Date
+  endDate?: Date | null
+  published?: boolean
+  createdBy?: string
+}
+
 /**
  * Create a test user with default USER role
  */
 export async function createUser(data: CreateUserData): Promise<TestUser> {
   const hashedPassword = await import('@/lib/auth/password').then(m => m.hashPassword(data.password))
   
+  // Add timestamp and random number to ensure uniqueness
+  const uniqueId = Date.now() + Math.floor(Math.random() * 10000)
+  const uniqueEmail = data.email.replace('@', `+${uniqueId}@`)
+  const uniqueUsername = `${data.username}_${uniqueId}`
+  
   const user = await prisma.user.create({
     data: {
-      email: data.email,
-      username: data.username,
+      email: uniqueEmail,
+      username: uniqueUsername,
       passwordHash: hashedPassword,
     },
     select: {
@@ -152,6 +179,44 @@ export async function createExperience(data: CreateExperienceData) {
 }
 
 /**
+ * Create a project entry for testing
+ */
+export async function createProject(data: CreateProjectData) {
+  // Generate slug from title if not provided
+  const slug = data.slug || data.title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  
+  return await prisma.project.create({
+    data: {
+      title: data.title,
+      slug,
+      summary: data.summary,
+      description: data.description,
+      coverImageUrl: data.coverImageUrl,
+      galleryUrls: data.galleryUrls || [],
+      repoUrl: data.repoUrl,
+      liveUrl: data.liveUrl,
+      videoUrl: data.videoUrl,
+      links: data.links,
+      techStack: data.techStack || [],
+      tags: data.tags || [],
+      status: data.status ?? 'ONGOING',
+      featured: data.featured ?? false,
+      order: data.order,
+      startDate: data.startDate ?? new Date('2024-01-01'),
+      endDate: data.endDate,
+      published: data.published ?? false,
+      createdBy: data.createdBy,
+      updatedBy: data.createdBy,
+    },
+  })
+}
+
+/**
  * Clean up test data
  */
 export async function cleanupTestData(): Promise<void> {
@@ -161,6 +226,7 @@ export async function cleanupTestData(): Promise<void> {
   await prisma.userRole.deleteMany()
   await prisma.about.deleteMany()
   await prisma.experience.deleteMany()
+  await prisma.project.deleteMany()
   await prisma.user.deleteMany()
   // Don't delete rolePermission, permission, or role as they're needed for all tests
 }

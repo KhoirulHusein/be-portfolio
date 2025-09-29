@@ -21,6 +21,11 @@ async function main() {
     { key: 'experience:update', description: 'Update experience entries' },
     { key: 'experience:delete', description: 'Delete experience entries' },
     { key: 'experience:publish', description: 'Publish/unpublish experience entries' },
+    { key: 'project:create', description: 'Create project entries' },
+    { key: 'project:read', description: 'Read project information' },
+    { key: 'project:update', description: 'Update project entries' },
+    { key: 'project:delete', description: 'Delete project entries' },
+    { key: 'project:publish', description: 'Publish/unpublish project entries' },
   ]
 
   console.log('📝 Creating permissions...')
