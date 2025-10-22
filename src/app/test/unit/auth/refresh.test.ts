@@ -23,7 +23,7 @@ describe('POST /api/v1/auth/refresh', () => {
   let userId: string
 
   beforeEach(async () => {
-    // Create test user and get refresh token
+    // Create test user
     await registerHandler(jsonRequest('http://localhost:4000/api/v1/auth/register', 'POST', testUser) as any)
     
     const loginResponse = await loginHandler(jsonRequest('http://localhost:4000/api/v1/auth/login', 'POST', {
@@ -32,8 +32,14 @@ describe('POST /api/v1/auth/refresh', () => {
     }) as any)
     
     const { json } = await readJson(loginResponse)
-    refreshToken = json.data.refreshToken
     userId = json.data.user.id
+    
+    // Get refresh token from database since it's not returned in response for security
+    const tokenRecord = await prisma.refreshToken.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    })
+    refreshToken = tokenRecord!.token
   })
 
   it('should refresh tokens successfully', async () => {

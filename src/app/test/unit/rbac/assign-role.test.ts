@@ -4,6 +4,7 @@ import { POST as loginHandler } from '@/app/api/v1/auth/login/route'
 import { POST as assignRoleHandler } from '@/app/api/v1/admin/users/[id]/roles/route'
 import { GET as adminUsersHandler } from '@/app/api/v1/admin/users/route'
 import { jsonRequest, readJson } from '@/app/test/setup/request-helpers'
+import { extractCookie, requestWithCookie } from '@/app/test/setup/cookie-helpers'
 import { prisma } from '@/lib/prisma'
 
 // Mock rate limiting
@@ -26,8 +27,8 @@ describe('POST /api/v1/admin/users/[id]/roles', () => {
     name: 'RBAC Assign Admin'
   }
 
-  let userAccessToken: string
-  let adminAccessToken: string
+  let userSessionCookie: string
+  let adminSessionCookie: string
   let adminUserId: string
   let testUserId: string
 
@@ -42,8 +43,7 @@ describe('POST /api/v1/admin/users/[id]/roles', () => {
       password: testUser.password
     }) as any)
     
-    const { json: userLoginJson } = await readJson(userLoginResponse)
-    userAccessToken = userLoginJson.data.accessToken
+    userSessionCookie = extractCookie(userLoginResponse, 'portfolio_session') || ''
 
     // Create admin user
     const adminRegisterResponse = await registerHandler(jsonRequest('http://localhost:4000/api/v1/auth/register', 'POST', testAdmin) as any)
@@ -64,16 +64,13 @@ describe('POST /api/v1/admin/users/[id]/roles', () => {
       password: testAdmin.password
     }) as any)
     
-    const { json: adminLoginJson } = await readJson(adminLoginResponse)
-    adminAccessToken = adminLoginJson.data.accessToken
+    adminSessionCookie = extractCookie(adminLoginResponse, 'portfolio_session') || ''
   })
 
   it('should allow ADMIN to assign role to user', async () => {
-    const req = jsonRequest(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', {
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', adminSessionCookie, {
       roleName: 'ADMIN'
     })
-    
-    req.headers.set('Authorization', `Bearer ${adminAccessToken}`)
 
     const response = await assignRoleHandler(req as any, { params: Promise.resolve({ id: testUserId }) })
     const { status, json } = await readJson(response)
@@ -89,20 +86,14 @@ describe('POST /api/v1/admin/users/[id]/roles', () => {
   it('should verify user can access admin endpoint after role assignment', async () => {
     // First assign ADMIN role
     await assignRoleHandler(
-      jsonRequest(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', {
+      requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', adminSessionCookie, {
         roleName: 'ADMIN'
-      }, { 'Authorization': `Bearer ${adminAccessToken}` }) as any,
+      }) as any,
       { params: Promise.resolve({ id: testUserId }) }
     )
 
     // Now test if user can access admin endpoint
-    const req = new Request('http://localhost:4000/api/v1/admin/users', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${userAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie('http://localhost:4000/api/v1/admin/users', 'GET', 'portfolio_session', userSessionCookie)
 
     const response = await adminUsersHandler(req as any)
     const { status, json } = await readJson(response)
@@ -113,11 +104,9 @@ describe('POST /api/v1/admin/users/[id]/roles', () => {
   })
 
   it('should reject role assignment from non-admin user', async () => {
-    const req = jsonRequest(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', {
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', userSessionCookie, {
       roleName: 'ADMIN'
     })
-    
-    req.headers.set('Authorization', `Bearer ${userAccessToken}`)
 
     const response = await assignRoleHandler(req as any, { params: Promise.resolve({ id: testUserId }) })
     const { status, json } = await readJson(response)
@@ -128,9 +117,7 @@ describe('POST /api/v1/admin/users/[id]/roles', () => {
   })
 
   it('should return 400 for missing role name', async () => {
-    const req = jsonRequest(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', {})
-    
-    req.headers.set('Authorization', `Bearer ${adminAccessToken}`)
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', adminSessionCookie, {})
 
     const response = await assignRoleHandler(req as any, { params: Promise.resolve({ id: testUserId }) })
     const { status, json } = await readJson(response)
@@ -143,11 +130,9 @@ describe('POST /api/v1/admin/users/[id]/roles', () => {
 
   it('should return 404 for non-existent user', async () => {
     const fakeUserId = 'fake-user-id'
-    const req = jsonRequest(`http://localhost:4000/api/v1/admin/users/${fakeUserId}/roles`, 'POST', {
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${fakeUserId}/roles`, 'POST', 'portfolio_session', adminSessionCookie, {
       roleName: 'ADMIN'
     })
-    
-    req.headers.set('Authorization', `Bearer ${adminAccessToken}`)
 
     const response = await assignRoleHandler(req as any, { params: Promise.resolve({ id: fakeUserId }) })
     const { status, json } = await readJson(response)
@@ -158,11 +143,9 @@ describe('POST /api/v1/admin/users/[id]/roles', () => {
   })
 
   it('should return 404 for non-existent role', async () => {
-    const req = jsonRequest(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', {
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', adminSessionCookie, {
       roleName: 'NONEXISTENT_ROLE'
     })
-    
-    req.headers.set('Authorization', `Bearer ${adminAccessToken}`)
 
     const response = await assignRoleHandler(req as any, { params: Promise.resolve({ id: testUserId }) })
     const { status, json } = await readJson(response)

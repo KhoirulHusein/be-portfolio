@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server'
 
 /**
+ * Get session cookie name from environment
+ */
+export function getSessionCookieName(): string {
+  return process.env.SESSION_COOKIE_NAME || 'portfolio_session'
+}
+
+/**
+ * Create session cookie string for testing
+ */
+export function createSessionCookie(token: string): string {
+  const cookieName = getSessionCookieName()
+  return `${cookieName}=${token}`
+}
+
+/**
  * Extract cookie value from response
  */
 export function extractCookie(response: NextResponse, cookieName: string): string | null {
