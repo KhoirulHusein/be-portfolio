@@ -3,6 +3,7 @@ import { POST as registerHandler } from '@/app/api/v1/auth/register/route'
 import { POST as loginHandler } from '@/app/api/v1/auth/login/route'
 import { GET as adminUsersHandler, OPTIONS as adminUsersOptionsHandler } from '@/app/api/v1/admin/users/route'
 import { jsonRequest, readJson } from '@/app/test/setup/request-helpers'
+import { extractCookie, requestWithCookie } from '@/app/test/setup/cookie-helpers'
 import { prisma } from '@/lib/prisma'
 
 // Mock rate limiting
@@ -25,8 +26,8 @@ describe('GET /api/v1/admin/users - RBAC', () => {
     name: 'RBAC Admin'
   }
 
-  let userAccessToken: string
-  let adminAccessToken: string
+  let userSessionCookie: string
+  let adminSessionCookie: string
   let adminUserId: string
 
   beforeEach(async () => {
@@ -38,8 +39,7 @@ describe('GET /api/v1/admin/users - RBAC', () => {
       password: testUser.password
     }) as any)
     
-    const { json: userLoginJson } = await readJson(userLoginResponse)
-    userAccessToken = userLoginJson.data.accessToken
+    userSessionCookie = extractCookie(userLoginResponse, 'portfolio_session') || ''
 
     // Create admin user
     const adminRegisterResponse = await registerHandler(jsonRequest('http://localhost:4000/api/v1/auth/register', 'POST', testAdmin) as any)
@@ -59,18 +59,11 @@ describe('GET /api/v1/admin/users - RBAC', () => {
       password: testAdmin.password
     }) as any)
     
-    const { json: adminLoginJson } = await readJson(adminLoginResponse)
-    adminAccessToken = adminLoginJson.data.accessToken
+    adminSessionCookie = extractCookie(adminLoginResponse, 'portfolio_session') || ''
   })
 
   it('should deny access to admin endpoint for regular USER', async () => {
-    const req = new Request('http://localhost:4000/api/v1/admin/users', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${userAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie('http://localhost:4000/api/v1/admin/users', 'GET', 'portfolio_session', userSessionCookie)
 
     const response = await adminUsersHandler(req as any)
     const { status, json } = await readJson(response)
@@ -82,13 +75,7 @@ describe('GET /api/v1/admin/users - RBAC', () => {
   })
 
   it('should allow access to admin endpoint for ADMIN user', async () => {
-    const req = new Request('http://localhost:4000/api/v1/admin/users', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie('http://localhost:4000/api/v1/admin/users', 'GET', 'portfolio_session', adminSessionCookie)
 
     const response = await adminUsersHandler(req as any)
     const { status, json } = await readJson(response)
@@ -101,13 +88,7 @@ describe('GET /api/v1/admin/users - RBAC', () => {
   })
 
   it('should return proper user list with roles for admin', async () => {
-    const req = new Request('http://localhost:4000/api/v1/admin/users', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie('http://localhost:4000/api/v1/admin/users', 'GET', 'portfolio_session', adminSessionCookie)
 
     const response = await adminUsersHandler(req as any)
     const { status, json } = await readJson(response)

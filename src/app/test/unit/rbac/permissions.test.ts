@@ -4,6 +4,7 @@ import { POST as loginHandler } from '@/app/api/v1/auth/login/route'
 import { POST as assignRoleHandler } from '@/app/api/v1/admin/users/[id]/roles/route'
 import { DELETE as revokeRoleHandler } from '@/app/api/v1/admin/users/[id]/roles/[role]/route'
 import { jsonRequest, readJson } from '@/app/test/setup/request-helpers'
+import { extractCookie, requestWithCookie } from '@/app/test/setup/cookie-helpers'
 import { prisma } from '@/lib/prisma'
 
 // Mock rate limiting
@@ -26,8 +27,8 @@ describe('RBAC Permissions', () => {
     name: 'RBAC Permissions Admin'
   }
 
-  let userAccessToken: string
-  let adminAccessToken: string
+  let userSessionCookie: string
+  let adminSessionCookie: string
   let adminUserId: string
   let testUserId: string
 
@@ -42,8 +43,7 @@ describe('RBAC Permissions', () => {
       password: testUser.password
     }) as any)
     
-    const { json: userLoginJson } = await readJson(userLoginResponse)
-    userAccessToken = userLoginJson.data.accessToken
+    userSessionCookie = extractCookie(userLoginResponse, 'portfolio_session') || ''
 
     // Create admin user
     const adminRegisterResponse = await registerHandler(jsonRequest('http://localhost:4000/api/v1/auth/register', 'POST', testAdmin) as any)
@@ -64,16 +64,13 @@ describe('RBAC Permissions', () => {
       password: testAdmin.password
     }) as any)
     
-    const { json: adminLoginJson } = await readJson(adminLoginResponse)
-    adminAccessToken = adminLoginJson.data.accessToken
+    adminSessionCookie = extractCookie(adminLoginResponse, 'portfolio_session') || ''
   })
 
   it('should allow ADMIN with role:assign permission to assign roles', async () => {
-    const req = jsonRequest(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', {
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', adminSessionCookie, {
       roleName: 'ADMIN'
     })
-    
-    req.headers.set('Authorization', `Bearer ${adminAccessToken}`)
 
     const response = await assignRoleHandler(req as any, { params: Promise.resolve({ id: testUserId }) })
     const { status, json } = await readJson(response)
@@ -94,13 +91,7 @@ describe('RBAC Permissions', () => {
     })
 
     // Then revoke it
-    const req = new Request(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, 'DELETE', 'portfolio_session', adminSessionCookie)
 
     const response = await revokeRoleHandler(req as any, { params: Promise.resolve({ id: testUserId, role: 'ADMIN' }) })
     const { status, json } = await readJson(response)
@@ -111,11 +102,9 @@ describe('RBAC Permissions', () => {
   })
 
   it('should deny role:assign permission to USER role', async () => {
-    const req = jsonRequest(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', {
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', userSessionCookie, {
       roleName: 'ADMIN'
     })
-    
-    req.headers.set('Authorization', `Bearer ${userAccessToken}`)
 
     const response = await assignRoleHandler(req as any, { params: Promise.resolve({ id: testUserId }) })
     const { status, json } = await readJson(response)
@@ -127,13 +116,7 @@ describe('RBAC Permissions', () => {
   })
 
   it('should deny role:revoke permission to USER role', async () => {
-    const req = new Request(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${userAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, 'DELETE', 'portfolio_session', userSessionCookie)
 
     const response = await revokeRoleHandler(req as any, { params: Promise.resolve({ id: testUserId, role: 'ADMIN' }) })
     const { status, json } = await readJson(response)

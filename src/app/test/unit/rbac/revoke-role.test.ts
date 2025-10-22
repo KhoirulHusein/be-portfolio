@@ -5,6 +5,7 @@ import { POST as assignRoleHandler } from '@/app/api/v1/admin/users/[id]/roles/r
 import { DELETE as revokeRoleHandler } from '@/app/api/v1/admin/users/[id]/roles/[role]/route'
 import { GET as adminUsersHandler } from '@/app/api/v1/admin/users/route'
 import { jsonRequest, readJson } from '@/app/test/setup/request-helpers'
+import { extractCookie, requestWithCookie } from '@/app/test/setup/cookie-helpers'
 import { prisma } from '@/lib/prisma'
 
 // Mock rate limiting
@@ -27,8 +28,8 @@ describe('DELETE /api/v1/admin/users/[id]/roles/[role]', () => {
     name: 'RBAC Revoke Admin'
   }
 
-  let userAccessToken: string
-  let adminAccessToken: string
+  let userSessionCookie: string
+  let adminSessionCookie: string
   let adminUserId: string
   let testUserId: string
 
@@ -43,8 +44,7 @@ describe('DELETE /api/v1/admin/users/[id]/roles/[role]', () => {
       password: testUser.password
     }) as any)
     
-    const { json: userLoginJson } = await readJson(userLoginResponse)
-    userAccessToken = userLoginJson.data.accessToken
+    userSessionCookie = extractCookie(userLoginResponse, 'portfolio_session') || ''
 
     // Create admin user
     const adminRegisterResponse = await registerHandler(jsonRequest('http://localhost:4000/api/v1/auth/register', 'POST', testAdmin) as any)
@@ -65,31 +65,19 @@ describe('DELETE /api/v1/admin/users/[id]/roles/[role]', () => {
       password: testAdmin.password
     }) as any)
     
-    const { json: adminLoginJson } = await readJson(adminLoginResponse)
-    adminAccessToken = adminLoginJson.data.accessToken
+    adminSessionCookie = extractCookie(adminLoginResponse, 'portfolio_session') || ''
   })
 
   it('should allow ADMIN to revoke role from user', async () => {
     // First assign ADMIN role to testUser
-    const assignReq = new Request(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ roleName: 'ADMIN' })
+    const assignReq = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', adminSessionCookie, {
+      roleName: 'ADMIN'
     })
 
     await assignRoleHandler(assignReq as any, { params: Promise.resolve({ id: testUserId }) })
 
     // Then revoke it
-    const req = new Request(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, 'DELETE', 'portfolio_session', adminSessionCookie)
 
     const response = await revokeRoleHandler(req as any, { params: Promise.resolve({ id: testUserId, role: 'ADMIN' }) })
     const { status, json } = await readJson(response)
@@ -104,37 +92,20 @@ describe('DELETE /api/v1/admin/users/[id]/roles/[role]', () => {
 
   it('should verify user cannot access admin endpoint after role revocation', async () => {
     // First assign ADMIN role to testUser
-    const assignReq = new Request(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ roleName: 'ADMIN' })
+    const assignReq = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles`, 'POST', 'portfolio_session', adminSessionCookie, {
+      roleName: 'ADMIN'
     })
 
     await assignRoleHandler(assignReq as any, { params: Promise.resolve({ id: testUserId }) })
 
     // Then revoke ADMIN role
     await revokeRoleHandler(
-      new Request(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${adminAccessToken}`,
-          'Content-Type': 'application/json'
-        }
-      }) as any,
+      requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, 'DELETE', 'portfolio_session', adminSessionCookie) as any,
       { params: Promise.resolve({ id: testUserId, role: 'ADMIN' }) }
     )
 
     // Now test if user can access admin endpoint (should fail)
-    const req = new Request('http://localhost:4000/api/v1/admin/users', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${userAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie('http://localhost:4000/api/v1/admin/users', 'GET', 'portfolio_session', userSessionCookie)
 
     const response = await adminUsersHandler(req as any)
     const { status, json } = await readJson(response)
@@ -145,13 +116,7 @@ describe('DELETE /api/v1/admin/users/[id]/roles/[role]', () => {
   })
 
   it('should reject role revocation from non-admin user', async () => {
-    const req = new Request(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${userAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/ADMIN`, 'DELETE', 'portfolio_session', userSessionCookie)
 
     const response = await revokeRoleHandler(req as any, { params: Promise.resolve({ id: testUserId, role: 'ADMIN' }) })
     const { status, json } = await readJson(response)
@@ -162,13 +127,7 @@ describe('DELETE /api/v1/admin/users/[id]/roles/[role]', () => {
   })
 
   it('should prevent removing USER role', async () => {
-    const req = new Request(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/USER`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${testUserId}/roles/USER`, 'DELETE', 'portfolio_session', adminSessionCookie)
 
     const response = await revokeRoleHandler(req as any, { params: Promise.resolve({ id: testUserId, role: 'USER' }) })
     const { status, json } = await readJson(response)
@@ -181,13 +140,7 @@ describe('DELETE /api/v1/admin/users/[id]/roles/[role]', () => {
 
   it('should return 404 for non-existent user', async () => {
     const fakeUserId = 'fake-user-id'
-    const req = new Request(`http://localhost:4000/api/v1/admin/users/${fakeUserId}/roles/ADMIN`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    const req = requestWithCookie(`http://localhost:4000/api/v1/admin/users/${fakeUserId}/roles/ADMIN`, 'DELETE', 'portfolio_session', adminSessionCookie)
 
     const response = await revokeRoleHandler(req as any, { params: Promise.resolve({ id: fakeUserId, role: 'ADMIN' }) })
     const { status, json } = await readJson(response)

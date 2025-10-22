@@ -3,6 +3,7 @@ import { POST as registerHandler } from '@/app/api/v1/auth/register/route'
 import { POST as loginHandler } from '@/app/api/v1/auth/login/route'
 import { PUT as changePasswordHandler } from '@/app/api/v1/auth/change-password/route'
 import { jsonRequest, readJson } from '@/app/test/setup/request-helpers'
+import { extractCookie, requestWithCookie } from '@/app/test/setup/cookie-helpers'
 import { comparePassword } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -19,11 +20,11 @@ describe('PUT /api/v1/auth/change-password', () => {
     name: 'Change Pass User'
   }
 
-  let accessToken: string
+  let sessionCookie: string
   let userId: string
 
   beforeEach(async () => {
-    // Create test user and get access token
+    // Create test user and get session cookie
     await registerHandler(jsonRequest('http://localhost:4000/api/v1/auth/register', 'POST', testUser) as any)
     
     const loginResponse = await loginHandler(jsonRequest('http://localhost:4000/api/v1/auth/login', 'POST', {
@@ -32,18 +33,16 @@ describe('PUT /api/v1/auth/change-password', () => {
     }) as any)
     
     const { json } = await readJson(loginResponse)
-    accessToken = json.data.accessToken
+    sessionCookie = extractCookie(loginResponse, 'portfolio_session') || ''
     userId = json.data.user.id
   })
 
   it('should change password successfully', async () => {
     const newPassword = 'NewPassword123!'
     
-    const req = jsonRequest('http://localhost:4000/api/v1/auth/change-password', 'PUT', {
+    const req = requestWithCookie('http://localhost:4000/api/v1/auth/change-password', 'PUT', 'portfolio_session', sessionCookie, {
       currentPassword: testUser.password,
       newPassword
-    }, {
-      'Authorization': `Bearer ${accessToken}`
     })
 
     const response = await changePasswordHandler(req as any)
@@ -67,11 +66,9 @@ describe('PUT /api/v1/auth/change-password', () => {
   })
 
   it('should return 401 for invalid current password', async () => {
-    const req = jsonRequest('http://localhost:4000/api/v1/auth/change-password', 'PUT', {
+    const req = requestWithCookie('http://localhost:4000/api/v1/auth/change-password', 'PUT', 'portfolio_session', sessionCookie, {
       currentPassword: 'WrongCurrentPassword123!',
       newPassword: 'NewPassword123!'
-    }, {
-      'Authorization': `Bearer ${accessToken}`
     })
 
     const response = await changePasswordHandler(req as any)
@@ -97,11 +94,9 @@ describe('PUT /api/v1/auth/change-password', () => {
   })
 
   it('should return 400 for missing fields', async () => {
-    const req = jsonRequest('http://localhost:4000/api/v1/auth/change-password', 'PUT', {
+    const req = requestWithCookie('http://localhost:4000/api/v1/auth/change-password', 'PUT', 'portfolio_session', sessionCookie, {
       currentPassword: testUser.password
       // missing newPassword
-    }, {
-      'Authorization': `Bearer ${accessToken}`
     })
 
     const response = await changePasswordHandler(req as any)
@@ -113,11 +108,9 @@ describe('PUT /api/v1/auth/change-password', () => {
   })
 
   it('should return 400 for weak new password', async () => {
-    const req = jsonRequest('http://localhost:4000/api/v1/auth/change-password', 'PUT', {
+    const req = requestWithCookie('http://localhost:4000/api/v1/auth/change-password', 'PUT', 'portfolio_session', sessionCookie, {
       currentPassword: testUser.password,
       newPassword: 'weak' // too weak
-    }, {
-      'Authorization': `Bearer ${accessToken}`
     })
 
     const response = await changePasswordHandler(req as any)
