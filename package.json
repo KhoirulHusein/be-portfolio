@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "vercel-build": "prisma generate && next build",
+    "build": "prisma generate && next build",
+
     "dev": "dotenv -e .env.development -- next dev -p 4000",
     "build:dev": "dotenv -e .env.development -- next build",
     "build:prod": "dotenv -e .env.production -- next build",
@@ -22,12 +25,16 @@
     "prisma:seed:dev": "dotenv -e .env.development -- prisma db seed",
     
     "rbac:bootstrap:dev": "dotenv -e .env.development -- tsx scripts/bootstrap-superadmin.ts",
-    "rbac:bootstrap:prod": "dotenv -e .env.production -- tsx scripts/bootstrap-superadmin.ts"
+    "rbac:bootstrap:prod": "dotenv -e .env.production -- tsx scripts/bootstrap-superadmin.ts",
+
+    "migrate:dev": "dotenv -e .env.development -- npx prisma migrate deploy",
+    "migrate:prod": "dotenv -e .env.production -- npx prisma migrate deploy"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "prisma": "^6.15.0",
     "@prisma/client": "6.15.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
@@ -42,7 +49,6 @@
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^17.2.2",
     "dotenv-cli": "^10.0.0",
-    "prisma": "^6.15.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
     "typescript": "^5",

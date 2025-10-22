@@ -23,6 +23,9 @@ importers:
       next:
         specifier: 15.5.2
         version: 15.5.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      prisma:
+        specifier: ^6.15.0
+        version: 6.15.0(magicast@0.3.5)(typescript@5.9.2)
     devDependencies:
       '@types/bcrypt':
         specifier: ^6.0.0
@@ -45,9 +48,6 @@ importers:
       dotenv-cli:
         specifier: ^10.0.0
         version: 10.0.0
-      prisma:
-        specifier: ^6.15.0
-        version: 6.15.0(magicast@0.3.5)(typescript@5.9.2)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.19.11)(typescript@5.9.2)
